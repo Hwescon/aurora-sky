@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="极光星空 —— 全屏极光循环背景 + 背景音乐的单页壁纸">
+<title>极光星空</title>
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+    }
+
+    /* 背景视频：铺满窗口，居中裁切 */
+    .video-background {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    /* 文字层：想加字就往 <div class="content"> 里写 */
+    .content {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1;
+        color: rgb(240, 17, 155);
+        font-family: "华文彩云", "STCaiyun", "微软雅黑", sans-serif;
+        font-size: clamp(1.2rem, 4vw, 3rem);
+        letter-spacing: .12em;
+        text-align: center;
+        text-shadow: 0 0 14px rgba(240, 17, 155, .6);
+        animation: pulse 1.5s ease-in-out infinite;
+        user-select: none;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1;   transform: translate(-50%, -50%) scale(1); }
+        50%      { opacity: .72; transform: translate(-50%, -50%) scale(1.05); }
+    }
+
+    /* 视频加载失败时的兜底提示 */
+    .fallback {
+        position: fixed;
+        inset: 0;
+        z-index: 3;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        color: #9ad;
+        font: 16px/1.8 "微软雅黑", sans-serif;
+        text-align: center;
+        padding: 24px;
+        background: radial-gradient(circle at 50% 40%, #06121f, #000 70%);
+    }
+    .fallback.on { display: flex; }
+
+    /* 音乐被浏览器拦下时，提示点一下；开播后自动消失 */
+    .hint {
+        position: fixed;
+        left: 50%;
+        bottom: 28px;
+        transform: translateX(-50%);
+        z-index: 2;
+        padding: 7px 16px;
+        border-radius: 999px;
+        background: rgba(0, 24, 48, .55);
+        border: 1px solid rgba(120, 200, 255, .28);
+        color: #9cd8ff;
+        font: 13px/1.5 "微软雅黑", sans-serif;
+        letter-spacing: .08em;
+        white-space: nowrap;
+        opacity: 0;
+        transition: opacity .5s ease;
+        pointer-events: none;
+    }
+    .hint.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- 背景视频 -->
+<video class="video-background" autoplay muted loop playsinline preload="auto" webkit-playsinline>
+    <source src="assets/aurora.mp4" type="video/mp4">
+</video>
+
+<!-- 背景音乐 -->
+<audio id="music1" loop preload="auto" hidden>
+    <source src="assets/falling.mp3" type="audio/mpeg">
+</audio>
+
+<div class="content"></div>
+<div class="hint" id="hint">点击任意位置播放音乐</div>
+
+<div class="fallback" id="fallback">
+    背景视频没有加载成功<br>
+    请确认 <b>assets/aurora.mp4</b> 和本页面在同一个目录下
+</div>
+
+<script>
+var video    = document.querySelector('.video-background');
+var music    = document.getElementById('music1');
+var fallback = document.getElementById('fallback');
+var hint     = document.getElementById('hint');
+
+/* ---------- 背景视频 ---------- */
+function tryPlayVideo() {
+    var p = video.play();
+    if (p && p.catch) p.catch(function () {});
+}
+
+video.addEventListener('loadeddata', function () {
+    if (video.videoWidth > 0) {
+        fallback.classList.remove('on');
+        tryPlayVideo();
+    } else {
+        fallback.classList.add('on');
+    }
+});
+video.addEventListener('error', function () { fallback.classList.add('on'); });
+
+setTimeout(function () {
+    if (!video.videoWidth) fallback.classList.add('on');
+}, 4000);
+
+document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) {
+        tryPlayVideo();
+        if (music.paused) startMusic();
+    }
+});
+
+/* ---------- 背景音乐：能自动就自动，不能就等一次交互 ---------- */
+var musicStarted = false;
+var EVENTS = ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll'];
+
+function hideHint() { hint.classList.remove('show'); }
+
+function unmute() {
+    music.muted = false;
+    if (music.paused) {
+        var p2 = music.play();
+        if (p2 && p2.catch) p2.catch(function () {});
+    }
+    hideHint();
+    EVENTS.forEach(function (ev) { window.removeEventListener(ev, unmute); });
+}
+
+function startMusic() {
+    if (musicStarted) return;
+    musicStarted = true;
+    music.muted = false;
+
+    var p = music.play();
+    if (!p || !p.then) return;
+
+    p.then(function () {
+        hideHint();
+    }).catch(function () {
+        // 浏览器拦截了有声自动播放：先静音循环，等任意一次交互立刻出声
+        music.muted = true;
+        var p3 = music.play();
+        if (p3 && p3.catch) p3.catch(function () {});
+        hint.classList.add('show');
+        EVENTS.forEach(function (ev) {
+            window.addEventListener(ev, unmute, { passive: true });
+        });
+    });
+}
+
+startMusic();
+window.addEventListener('load', startMusic);
+</script>
+
+</body>
+</html>
