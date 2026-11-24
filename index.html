@@ -95,7 +95,7 @@
 </video>
 
 <!-- 背景音乐 -->
-<audio id="music1" loop preload="auto" hidden>
+<audio id="music1" loop preload="auto" muted autoplay hidden>
     <source src="assets/falling.mp3" type="audio/mpeg">
 </audio>
 
@@ -140,20 +140,31 @@ document.addEventListener('visibilitychange', function () {
     }
 });
 
-/* ---------- 背景音乐：能自动就自动，不能就等一次交互 ---------- */
+/* ---------- 背景音乐：能自动就自动，被拦就先静音跑，等一次交互立刻出声 ---------- */
 var musicStarted = false;
 var EVENTS = ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'scroll'];
 
 function hideHint() { hint.classList.remove('show'); }
 
-function unmute() {
+function detach() {
+    EVENTS.forEach(function (ev) { window.removeEventListener(ev, onGesture); });
+}
+
+// 一次交互：把静音状态摘掉并确保在播。浏览器若仍不认（比如只是移动鼠标），
+// 就退回静音+提示，等下一次真正的点击。
+function onGesture() {
+    var wasPaused = music.paused;
     music.muted = false;
-    if (music.paused) {
-        var p2 = music.play();
-        if (p2 && p2.catch) p2.catch(function () {});
-    }
-    hideHint();
-    EVENTS.forEach(function (ev) { window.removeEventListener(ev, unmute); });
+    var p = music.play();
+    if (!p || !p.then) { hideHint(); detach(); return; }
+    p.then(function () { hideHint(); detach(); })
+     .catch(function () {
+         music.muted = true;
+         if (wasPaused) {
+             var q = music.play();
+             if (q && q.catch) q.catch(function () {});
+         }
+     });
 }
 
 function startMusic() {
@@ -167,13 +178,14 @@ function startMusic() {
     p.then(function () {
         hideHint();
     }).catch(function () {
-        // 浏览器拦截了有声自动播放：先静音循环，等任意一次交互立刻出声
+        // 浏览器拦了有声自动播放：<audio> 自带 autoplay muted，静音这一路一定起得来，
+        // 然后挂上交互监听，任意点击/按键立刻出声
         music.muted = true;
         var p3 = music.play();
         if (p3 && p3.catch) p3.catch(function () {});
         hint.classList.add('show');
         EVENTS.forEach(function (ev) {
-            window.addEventListener(ev, unmute, { passive: true });
+            window.addEventListener(ev, onGesture, { passive: true });
         });
     });
 }
