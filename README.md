@@ -2,9 +2,9 @@
 
 一个单文件的全屏壁纸页面：极光视频无缝循环铺满窗口，配一首背景音乐，点开就是画面。
 
-![preview](assets/aurora.mp4)
+![预览](assets/preview.jpg)
 
-> 上面这个不是图片，是视频本身（GitHub 会显示成播放器）。
+▶ [下载/播放这段循环视频（6.3s · 1920×1080）](assets/aurora.mp4)
 
 ---
 
@@ -21,6 +21,7 @@
 index.html          页面本体，所有逻辑都在里面，无任何外部依赖
 assets/aurora.mp4   极光循环视频  1920×1080 / 30fps / 6.3s / H.264 / 16.2 MB
 assets/falling.mp3  背景音乐      320 kbps / 44.1 kHz / 3:36 / 8.3 MB
+assets/preview.jpg  上面的预览图，页面不引用，可以删
 ```
 
 ## 怎么用
